@@ -389,8 +389,9 @@ class VideoMerge: NSObject {
         let videoLayer = CALayer()
         videoLayer.frame = videoFrame
         
-        let imageView = UIImageView(frame: videoFrame)
-        imageView.contentMode = .scaleAspectFill
+        let imageView = UIImageView(frame: CGRect(x: 10, y: 10, width: 60, height: 20))
+        imageView.contentMode = .scaleAspectFit
+        imageView.backgroundColor = UIColor.yellow
         imageView.image = image
         
         parentLayer.addSublayer(videoLayer)
