@@ -7,19 +7,57 @@
 //
 
 import UIKit
+import AVKit
 
 class ViewController: UIViewController {
 
+    @IBOutlet weak var labelProgress: UILabel!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+        createData()
     }
 
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    func createData() {
+        
+        let videoNames: [String] = ["20s.mp4"]
+        // let videoNames: [String] = ["video-1.mp4", "video-2.mp4", "video-3.mp4", "video-4.mp4", "video-5.mp4", "video-6.mp4"]
+        
+        var videoUrls: [URL] = []
+        for videoName in videoNames {
+            let namePaths = videoName.components(separatedBy: ".")
+            guard namePaths.count == 2 else { continue }
+            guard let url = Bundle.main.url(forResource: namePaths[0], withExtension: namePaths[1]) else { continue }
+            videoUrls.append(url)
+        }
+        let brushImage: UIImage = #imageLiteral(resourceName: "water_mark")
+        
+        let videoMerge: VideoMerge = VideoMerge(videoUrls: videoUrls, texts: videoNames, brushImage: brushImage)
+        
+        let begin = Date();
+        videoMerge.startExportVideo(onProgress: { [unowned self] (progress) in
+            self.labelProgress.text = "\(progress)"
+            }, onCompletion: { [unowned self] (videoData, thumbData, error) in
+                let endTime = Date().timeIntervalSince(begin)
+                print("Total time: \(endTime)")
+                print("video: \(String(describing: videoData?.description))")
+                print("thumb: \(String(describing: thumbData?.description))")
+                print("error: \(String(describing: error))")
+                if error == nil, let videoUrl = videoMerge.exportUrl {
+                    self.playVideo(url: videoUrl)
+                }
+        })
+        
     }
-
+    
+    func playVideo(url: URL) {
+        let player = AVPlayer(url: url)
+        let playerViewController = AVPlayerViewController()
+        playerViewController.player = player
+        present(playerViewController, animated: true) {
+            playerViewController.player!.play()
+        }
+    }
 
 }
 

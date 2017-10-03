@@ -12,6 +12,15 @@
 		11CC633F1F83C4A400936CDF /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 11CC633D1F83C4A400936CDF /* Main.storyboard */; };
 		11CC63411F83C4A400936CDF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63401F83C4A400936CDF /* Assets.xcassets */; };
 		11CC63441F83C4A400936CDF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63421F83C4A400936CDF /* LaunchScreen.storyboard */; };
+		11CC634C1F83C4B500936CDF /* VideoMerge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CC634B1F83C4B500936CDF /* VideoMerge.swift */; };
+		11CC63561F83CCAE00936CDF /* 20s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63551F83C99A00936CDF /* 20s.mp4 */; };
+		11CC63571F83CCAE00936CDF /* 22s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC634F1F83C7B500936CDF /* 22s.mp4 */; };
+		11CC63581F83CCAE00936CDF /* video-1.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63521F83C7B500936CDF /* video-1.mp4 */; };
+		11CC63591F83CCAE00936CDF /* video-2.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63501F83C7B500936CDF /* video-2.mp4 */; };
+		11CC635A1F83CCAE00936CDF /* video-3.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63511F83C7B500936CDF /* video-3.mp4 */; };
+		11CC635B1F83CCAE00936CDF /* video-4.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC634E1F83C7B500936CDF /* video-4.mp4 */; };
+		11CC635C1F83CCAE00936CDF /* video-5.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63531F83C7B600936CDF /* video-5.mp4 */; };
+		11CC635D1F83CCAE00936CDF /* video-6.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 11CC63541F83C7B600936CDF /* video-6.mp4 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +31,15 @@
 		11CC63401F83C4A400936CDF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		11CC63431F83C4A400936CDF /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		11CC63451F83C4A400936CDF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		11CC634B1F83C4B500936CDF /* VideoMerge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoMerge.swift; sourceTree = "<group>"; };
+		11CC634E1F83C7B500936CDF /* video-4.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "video-4.mp4"; sourceTree = "<group>"; };
+		11CC634F1F83C7B500936CDF /* 22s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = 22s.mp4; sourceTree = "<group>"; };
+		11CC63501F83C7B500936CDF /* video-2.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "video-2.mp4"; sourceTree = "<group>"; };
+		11CC63511F83C7B500936CDF /* video-3.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "video-3.mp4"; sourceTree = "<group>"; };
+		11CC63521F83C7B500936CDF /* video-1.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "video-1.mp4"; sourceTree = "<group>"; };
+		11CC63531F83C7B600936CDF /* video-5.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "video-5.mp4"; sourceTree = "<group>"; };
+		11CC63541F83C7B600936CDF /* video-6.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "video-6.mp4"; sourceTree = "<group>"; };
+		11CC63551F83C99A00936CDF /* 20s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = 20s.mp4; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,14 +72,31 @@
 		11CC63381F83C4A400936CDF /* MergeVideo */ = {
 			isa = PBXGroup;
 			children = (
+				11CC634D1F83C79E00936CDF /* Samples */,
 				11CC63391F83C4A400936CDF /* AppDelegate.swift */,
 				11CC633B1F83C4A400936CDF /* ViewController.swift */,
+				11CC634B1F83C4B500936CDF /* VideoMerge.swift */,
 				11CC633D1F83C4A400936CDF /* Main.storyboard */,
 				11CC63401F83C4A400936CDF /* Assets.xcassets */,
 				11CC63421F83C4A400936CDF /* LaunchScreen.storyboard */,
 				11CC63451F83C4A400936CDF /* Info.plist */,
 			);
 			path = MergeVideo;
+			sourceTree = "<group>";
+		};
+		11CC634D1F83C79E00936CDF /* Samples */ = {
+			isa = PBXGroup;
+			children = (
+				11CC63551F83C99A00936CDF /* 20s.mp4 */,
+				11CC634F1F83C7B500936CDF /* 22s.mp4 */,
+				11CC63521F83C7B500936CDF /* video-1.mp4 */,
+				11CC63501F83C7B500936CDF /* video-2.mp4 */,
+				11CC63511F83C7B500936CDF /* video-3.mp4 */,
+				11CC634E1F83C7B500936CDF /* video-4.mp4 */,
+				11CC63531F83C7B600936CDF /* video-5.mp4 */,
+				11CC63541F83C7B600936CDF /* video-6.mp4 */,
+			);
+			name = Samples;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -123,9 +158,17 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				11CC63591F83CCAE00936CDF /* video-2.mp4 in Resources */,
+				11CC635A1F83CCAE00936CDF /* video-3.mp4 in Resources */,
+				11CC63571F83CCAE00936CDF /* 22s.mp4 in Resources */,
 				11CC63441F83C4A400936CDF /* LaunchScreen.storyboard in Resources */,
 				11CC63411F83C4A400936CDF /* Assets.xcassets in Resources */,
+				11CC635C1F83CCAE00936CDF /* video-5.mp4 in Resources */,
 				11CC633F1F83C4A400936CDF /* Main.storyboard in Resources */,
+				11CC635D1F83CCAE00936CDF /* video-6.mp4 in Resources */,
+				11CC63561F83CCAE00936CDF /* 20s.mp4 in Resources */,
+				11CC63581F83CCAE00936CDF /* video-1.mp4 in Resources */,
+				11CC635B1F83CCAE00936CDF /* video-4.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,6 +180,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				11CC633C1F83C4A400936CDF /* ViewController.swift in Sources */,
+				11CC634C1F83C4B500936CDF /* VideoMerge.swift in Sources */,
 				11CC633A1F83C4A400936CDF /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -211,7 +255,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -262,7 +306,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
@@ -277,6 +321,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Z2HAJP9Q8N;
 				INFOPLIST_FILE = MergeVideo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.nah.MergeVideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -292,6 +337,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Z2HAJP9Q8N;
 				INFOPLIST_FILE = MergeVideo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.nah.MergeVideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
