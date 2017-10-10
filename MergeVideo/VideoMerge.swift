@@ -13,64 +13,52 @@ import AVFoundation
 typealias VideoExportProgressBlock = (Float) -> Void
 typealias VideoExportCompletionBlock = (Data?, Data?, Error?) -> Void
 
-class VideoMerge: NSObject {
+enum ExportError: Error {
+    case invalidAsset, emptyVideo, noSession
+}
+
+class VideoMerge {
     
-    private enum State: Int {
-        case none, merge, finish
+    enum State {
+        case none, merging, finished(URL), failed(Error?)
     }
+    
+    private(set) var exportedUrl: URL?
+    private var state: State = .none
     
     private var videoUrl: URL
     private var texts: [ComposeComment] = []
     private var brushImage: UIImage?
+    private var overlayViews: [UIView] = []
     
     private var exportSession: AVAssetExportSession?
-    fileprivate(set) var exportUrl: URL?
+    
     private var progressBlock: VideoExportProgressBlock?
     private var completionBlock: VideoExportCompletionBlock?
     
-    private var state: State = .none
-    
-    private var textLabels: [UIView] = []
-    
-    
-    private let displayWidth: CGFloat = UIScreen.main.bounds.width
-    
-    
-    private let kExportWidth: CGFloat = 667
-    private let kExportDomain: String = "ExportErrorDomain"
-    private let kExportCode: Int = -1
-    
-    // MARK: - Initialize
+    private let kDisplayWidth: CGFloat = UIScreen.main.bounds.width
+    private let kExportWidth: CGFloat = 800
     
     init(videoUrl: URL, texts: [ComposeComment], brushImage: UIImage?) {
         self.videoUrl = videoUrl
         self.texts = texts
         self.brushImage = brushImage
-        super.init()
-        // processExportVideo()
     }
     
     deinit {
         print("\(self) dealloc") // ERROR: Test!
     }
     
-    // MARK: - Actions
-    
     func startExportVideo(onProgress progressBlock: VideoExportProgressBlock? = nil, onCompletion completionBlock: VideoExportCompletionBlock? = nil) {
         
         self.progressBlock = progressBlock
         self.completionBlock = completionBlock
         
-        // Has exported video
-        if let url = exportUrl {
-            finishExport(url, error: nil)
-        }
-        else if state == .merge {
-            // Do nothing
-        }
-        else  {
-            // Start processing
-            processExportVideo()
+        switch state {
+        case .none: processExportVideo()
+        case .merging: break
+        case let .finished(url): finishExport(url, error: nil)
+        case let .failed(error): finishExport(nil, error: error)
         }
     }
     
@@ -78,65 +66,56 @@ class VideoMerge: NSObject {
         exportSession?.cancelExport()
         exportSession = nil
         state = .none
-        textLabels.removeAll()
+        overlayViews.removeAll()
     }
-    
-    // MARK: - Exporter
+}
+
+// MARK: - Actions
+
+extension VideoMerge {
     
     private func processExportVideo() {
-        var error: Error?
-        if let export = createExportSession(&error) {
-            state = .merge
+        do {
+            let export = try createExportSession()
+            state = .merging
             exportSession = export
             handleExportSession(export)
-        }
-        else {
+        } catch let error {
             state = .none
             finishExport(nil, error: error)
         }
     }
     
     private func handleExportSession(_ export: AVAssetExportSession) {
-        
-        
-        DispatchQueue.global().async {
+        DispatchQueue.global().async { [weak self] in
             export.exportAsynchronously() {
-                DispatchQueue.main.async { [weak self] () -> Void in
+                DispatchQueue.main.async {
                     guard let this = self else { return }
                     switch export.status {
-                    case .completed:
-                        print("Complete")
-                        this.exportUrl = export.outputURL
-                        this.exportSession = nil
-                        this.state = .finish
-                        this.finishExport(export.outputURL, error: nil)
+                    case .completed, .unknown:
                         
-                    case .unknown:
-                        print("Unknown")
-                        if FileManager.default.fileExists(atPath: export.outputURL!.path) {
-                            this.exportUrl = export.outputURL
-                            this.exportSession = nil
-                            this.state = .finish
-                            this.finishExport(export.outputURL, error: nil)
+                        if let url = export.outputURL, FileManager.default.fileExists(atPath: url.path) {
+                            this.exportedUrl = url
+                            this.state = .finished(url)
+                            this.finishExport(url, error: nil)
                         } else {
-                            this.exportSession = nil
-                            this.state = .finish
+                            this.state = .failed(export.error)
                             this.finishExport(nil, error: export.error)
                         }
-                        
-                    case .exporting, .waiting: break
+                        this.exportSession = nil
                         
                     case .failed, .cancelled:
-                        print("Fail / Cancel: \(export.error)")
                         this.exportSession = nil
-                        this.state = .finish
+                        this.state = .failed(export.error)
                         this.finishExport(nil, error: export.error)
+                        
+                    case .exporting, .waiting: break
                     }
                 }
             }
             
             while export.status == .waiting || export.status == .exporting {
-                DispatchQueue.main.async { [weak self] () -> Void in
+                DispatchQueue.main.async {
                     guard let this = self else { return }
                     this.progressBlock?(export.progress)
                 }
@@ -145,64 +124,55 @@ class VideoMerge: NSObject {
     }
     
     private func finishExport(_ url: URL?, error: Error?) {
-        if let url = url {
-            do {
-                let videoData = try Data(contentsOf: url)
-                let imageData = try createPreviewData(fromVideoUrl: url)
-                completionBlock?(videoData, imageData, nil)
-            } catch let error {
-                completionBlock?(nil, nil, error)
-            }
+        guard let url = url else {
+            completionBlock?(nil, nil, error)
+            return
         }
-        else {
+        
+        do {
+            let videoData = try Data(contentsOf: url)
+            let imageData = try createPreviewDataFrom(videoUrl: url)
+            completionBlock?(videoData, imageData, nil)
+        } catch let error {
             completionBlock?(nil, nil, error)
         }
     }
+}
+
+// MARK: - Ultilities
     
-    // MARK: - Ultilities
+private extension VideoMerge {
     
-    private func createExportSession(_ error: inout Error?) -> AVAssetExportSession? {
-        
+    private func createExportSession() throws -> AVAssetExportSession {
         // Get asset from videos
         let asset: AVAsset = AVAsset(url: videoUrl)
         
         guard CMTimeGetSeconds(asset.duration) > 0 else {
-            let message = "error-2"
-            let userInfo: [String : Any] = [NSLocalizedDescriptionKey : message]
-            error = NSError(domain: kExportDomain, code: kExportCode, userInfo: userInfo) as Error
-            return nil
+            throw ExportError.invalidAsset
         }
         
         // Create input AVMutableComposition, hold our video AVMutableCompositionTrack list.
         let inputComposition = AVMutableComposition()
         
-        // Add list videos into input composition
-        guard let videoTrack = addVideo(toInputComposition: inputComposition, fromAsset: asset) else {
-            let message = "error-3"
-            let userInfo: [String : Any] = [NSLocalizedDescriptionKey : message]
-            error = NSError(domain: kExportDomain, code: kExportCode, userInfo: userInfo) as Error
-            return nil
+        // Add video into input composition
+        guard let videoCompositionTrack = addVideo(from: asset, to: inputComposition) else {
+            throw ExportError.emptyVideo
         }
         
+        // Add audio into input composition
+        _ = addAudio(from: asset, to: inputComposition)
         
-        // Add list audio into input composition
-        _ = addAudio(toInputComposition: inputComposition, fromAsset: asset)
-        
-        // Add video instructions
-        let outputVideoInstruction = createOutputVideoInstruction(fromAsset: asset, videoTrack: videoTrack)
-        
-        // Get all video time length
-        var totalVideoTimeLength = kCMTimeZero
-        totalVideoTimeLength = CMTimeAdd(totalVideoTimeLength, asset.duration)
+        // Add video layer instructions
+        let outputVideoInstruction = createVideoLayerInstruction(asset: asset, videoCompositionTrack: videoCompositionTrack)
         
         // Output composition instruction
         let outputCompositionInstruction = AVMutableVideoCompositionInstruction()
-        outputCompositionInstruction.timeRange = CMTimeRangeMake(kCMTimeZero, totalVideoTimeLength)
+        outputCompositionInstruction.timeRange = CMTimeRangeMake(kCMTimeZero, asset.duration)
         outputCompositionInstruction.layerInstructions = [outputVideoInstruction]
         
-        let videoSize = videoTrack.naturalSize
-        let scale: CGFloat = kExportWidth / videoSize.width
-        let exportSize = CGSize(width: videoSize.width * scale, height: videoSize.height * scale)
+        let naturalSize = videoCompositionTrack.naturalSize
+        let scale: CGFloat = kExportWidth / naturalSize.width
+        let exportSize = CGSize(width: naturalSize.width * scale, height: naturalSize.height * scale)
         
         // Output video composition
         let outputComposition = AVMutableVideoComposition()
@@ -214,86 +184,74 @@ class VideoMerge: NSObject {
         // addEffect(image: brushImage, texts: texts, toOutputComposition: outputComposition)
         
         // Create export session from input video & output instruction
-        if let exportSession = AVAssetExportSession(asset: inputComposition, presetName: AVAssetExportPresetHighestQuality) {
-            exportSession.videoComposition = outputComposition
-            exportSession.outputFileType = AVFileType.mov
-            exportSession.outputURL = createCacheURL()
-            exportSession.shouldOptimizeForNetworkUse = true
-            return exportSession
+        guard let exportSession = AVAssetExportSession(asset: inputComposition, presetName: AVAssetExportPresetHighestQuality) else {
+            throw ExportError.noSession
         }
-        else {
-            let message = "Can not create export session."
-            print(message)
-            let userInfo: [String : Any] = [NSLocalizedDescriptionKey: message]
-            error = NSError(domain: kExportDomain, code: kExportCode, userInfo: userInfo) as Error
+        
+        exportSession.videoComposition = outputComposition
+        exportSession.outputFileType = AVFileType.mov
+        exportSession.outputURL = createCacheURL()
+        exportSession.shouldOptimizeForNetworkUse = true
+        return exportSession
+    }
+}
+
+// MARK: - Compose Configurations
+
+private extension VideoMerge {
+    
+    func addVideo(from asset: AVAsset, to inputComposition: AVMutableComposition) -> AVMutableCompositionTrack? {
+        // Important: only add track if has video type & insert succesfully, or must remove it out of composition.
+        // Otherwise export session always fail with error code -11820
+        guard let assetTrack = asset.tracks(withMediaType: AVMediaType.video).first else {
             return nil
         }
-    }
-    
-    private func addVideo(toInputComposition inputComposition: AVMutableComposition, fromAsset asset: AVAsset) -> AVMutableCompositionTrack? {
         
-        guard let track = inputComposition.addMutableTrack(withMediaType: AVMediaType.video, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else { return nil }
-        
-        do {
-            // Important: only add track if has media type, or have to remove out of composition
-            // Otherwise export session always fail with error code -11820
-            if let videoTrack = asset.tracks(withMediaType: AVMediaType.video).first {
-                try track.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: videoTrack, at: kCMTimeZero)
-                return track
-            }
-            else {
-                return nil
-            }
-        }
-        catch let error as NSError {
-            print("Fail: \(error)")
-            return nil
-        }
-    }
-    
-    private func addAudio(toInputComposition inputComposition: AVMutableComposition, fromAsset asset: AVAsset) -> AVMutableCompositionTrack? {
-        
-        // Add Audio tracks
-        guard let track = inputComposition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else {
+        guard let compositionTrack = inputComposition.addMutableTrack(withMediaType: AVMediaType.video, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else {
             return nil
         }
         
         do {
-            // Important: only add track if has media type, or have to remove out of composition
-            // Otherwise export session always fail with error code -11820
-            if let audioTrack = asset.tracks(withMediaType: AVMediaType.audio).first {
-                try track.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: audioTrack, at: kCMTimeZero)
-                return track
-            }
-            else {
-                return nil
-            }
-        }
-        catch let error as NSError {
-            print("Fail: \(error)")
+            try compositionTrack.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: assetTrack, at: kCMTimeZero)
+        } catch {
+            inputComposition.removeTrack(compositionTrack)
             return nil
         }
+        
+        return compositionTrack
     }
     
-    private func createOutputVideoInstruction(fromAsset asset: AVAsset, videoTrack: AVCompositionTrack) -> AVMutableVideoCompositionLayerInstruction {
-        var totalVideoTime = kCMTimeZero
+    func addAudio(from asset: AVAsset, to inputComposition: AVMutableComposition) -> AVMutableCompositionTrack? {
+        // Important: only add track if has audio type & insert succesfully, or must remove it out of composition.
+        // Otherwise export session always fail with error code -11820
+        guard let assetTrack = asset.tracks(withMediaType: AVMediaType.audio).first else {
+            return nil
+        }
         
-        let videoSize = videoTrack.naturalSize
+        guard let compositionTrack = inputComposition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else {
+            return nil
+        }
         
-        // Add instruction for videos
-        totalVideoTime = CMTimeAdd(totalVideoTime, asset.duration)
+        do {
+            try compositionTrack.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: assetTrack, at: kCMTimeZero)
+        } catch {
+            inputComposition.removeTrack(compositionTrack)
+            return nil
+        }
         
-        let instruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+        return compositionTrack
+    }
+    
+    private func createVideoLayerInstruction(asset: AVAsset, videoCompositionTrack: AVCompositionTrack) -> AVMutableVideoCompositionLayerInstruction {
         
-        instruction.setTransform(videoTrack.preferredTransform, at: kCMTimeZero)
+        let totalVideoTime = CMTimeAdd(kCMTimeZero, asset.duration)
+        let naturalSize = videoCompositionTrack.naturalSize
+        let scale: CGFloat = kExportWidth / naturalSize.width
+        let transform = videoCompositionTrack.preferredTransform.scaledBy(x: scale, y: scale)
         
-        let scale: CGFloat = kExportWidth / videoSize.width
-        
-        let t3 = videoTrack.preferredTransform.scaledBy(x: scale, y: scale)
-        instruction.setTransform(t3, at: kCMTimeZero)
-        
+        let instruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoCompositionTrack)
+        instruction.setTransform(transform, at: kCMTimeZero)
         instruction.setOpacity(0.0, at: totalVideoTime)
-        
         return instruction
     }
     
@@ -349,9 +307,6 @@ class VideoMerge: NSObject {
 //
 //        outputComposition.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
 //    }
-    
-    
-    
 }
 
 private extension VideoMerge {
@@ -361,15 +316,15 @@ private extension VideoMerge {
         let outputFileName = ProcessInfo.processInfo.globallyUniqueString
         let cacheURL = documentDirFileURL.appendingPathComponent("mergeVideo-\(outputFileName).mov")
         
-        // Remove existing file at url if has any
+        // Remove existing cache at url if has any
         try? FileManager.default.removeItem(at: cacheURL)
         print("Remove previous cache file at path: \(cacheURL)")
         
         return cacheURL
     }
     
-    func createPreviewData(fromVideoUrl url: URL) throws -> Data? {
-        let asset = AVAsset(url: url)
+    func createPreviewDataFrom(videoUrl: URL) throws -> Data? {
+        let asset = AVAsset(url: videoUrl)
         let imageGenerator = AVAssetImageGenerator(asset: asset)
         imageGenerator.appliesPreferredTrackTransform = true
         imageGenerator.requestedTimeToleranceAfter = kCMTimeZero
