@@ -46,7 +46,7 @@ class VideoMerge {
     }
     
     deinit {
-        print("\(self) dealloc") // ERROR: Test!
+        print("\(self) dealloc")
     }
     
     func startExportVideo(onProgress progressBlock: VideoExportProgressBlock? = nil, onCompletion completionBlock: VideoExportCompletionBlock? = nil) {
@@ -93,7 +93,6 @@ extension VideoMerge {
                     guard let `self` = self, let export = export else { return }
                     switch export.status {
                     case .completed, .unknown:
-                        
                         if let url = export.outputURL, FileManager.default.fileExists(atPath: url.path) {
                             self.exportedUrl = url
                             self.state = .finished(url)
@@ -181,7 +180,7 @@ private extension VideoMerge {
         outputComposition.renderSize = exportSize
         
         // Add effects
-        // addEffect(image: brushImage, texts: texts, toOutputComposition: outputComposition)
+        addEffect(texts: texts, to: outputComposition)
         
         // Create export session from input video & output instruction
         guard let exportSession = AVAssetExportSession(asset: inputComposition, presetName: AVAssetExportPresetHighestQuality) else {
@@ -243,7 +242,6 @@ private extension VideoMerge {
     }
     
     private func createVideoLayerInstruction(asset: AVAsset, videoCompositionTrack: AVCompositionTrack) -> AVMutableVideoCompositionLayerInstruction {
-        
         let totalVideoTime = CMTimeAdd(kCMTimeZero, asset.duration)
         let naturalSize = videoCompositionTrack.naturalSize
         let scale: CGFloat = kExportWidth / naturalSize.width
@@ -255,58 +253,60 @@ private extension VideoMerge {
         return instruction
     }
     
-//    private func addEffect(image: UIImage?, texts: [ComposeComment], toOutputComposition outputComposition: AVMutableVideoComposition) {
-//
-//        // Text layer container
-//        let videoFrame = CGRect(origin: CGPoint.zero, size: outputComposition.renderSize)
-//        let overlayLayer = CALayer()
-//        overlayLayer.frame = videoFrame
-//        overlayLayer.masksToBounds = true
-//
-//        let usedHeight = videoFrame.height * displayWidth / videoFrame.width
-//
-//        for index in stride(from: 0, to: texts.count, by: 1) {
-//            let comment: ComposeComment = texts[index]
-//
-//            let commentParts = CommentPart.parse(comment.comment.content, [])
-//            let textLabel = BomExportCommentItemView(parts: commentParts)
-//
-//            textLabel.frame.origin.x = videoFrame.maxX
-//            textLabel.frame.origin.y = videoFrame.bounds.height - videoFrame.bounds.height * comment.place / usedHeight - textLabel.bounds.height
-//
-//            let moveAnimation =  CABasicAnimation(keyPath: "position.x")
-//            moveAnimation.byValue = -(videoFrame.bounds.width + textLabel.bounds.width)
-//            moveAnimation.beginTime = comment.time
-//            moveAnimation.duration = textLabel.duration(width: videoFrame.bounds.width)
-//            moveAnimation.isRemovedOnCompletion = false
-//            moveAnimation.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionLinear)
-//            moveAnimation.fillMode = kCAFillModeForwards
-//
-//            textLabel.layer.add(moveAnimation, forKey: "move")
-//
-//            // Insert megatext layer
-//            overlayLayer.addSublayer(textLabel.layer)
-//            textLabels.append(textLabel) // *Very importance: To store instance, otherwise it can't render
-//        }
-//
-//        let watermark = UILabel(frame: CGRect(x: videoFrame.bounds.width - 150, y: 0, width: 150, height: 56))
-//        watermark.set(font: .Font(23), color: .white, text: "VIBBIDI.com")
-//        watermark.textAlignment = .center
-//        watermark.backgroundColor = UIColor(hex: 0x000000, alpha: 0.25)
-//        overlayLayer.addSublayer(watermark.layer)
-//        textLabels.append(watermark) // *Very importance: To store instance, otherwise it can't render
-//
-//        let parentLayer = CALayer()
-//        parentLayer.frame = videoFrame
-//
-//        let videoLayer = CALayer()
-//        videoLayer.frame = videoFrame
-//
-//        parentLayer.addSublayer(videoLayer)
-//        parentLayer.addSublayer(overlayLayer)
-//
-//        outputComposition.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
-//    }
+    private func addEffect(texts: [ComposeComment], to outputComposition: AVMutableVideoComposition) {
+        let videoFrame = CGRect(origin: CGPoint.zero, size: outputComposition.renderSize)
+        
+        // Text layer container
+        let overlayLayer = CALayer()
+        overlayLayer.frame = videoFrame
+        overlayLayer.masksToBounds = true
+
+        let composeHeight = videoFrame.height * kDisplayWidth / videoFrame.width
+
+        for index in stride(from: 0, to: texts.count, by: 1) {
+            let comment: ComposeComment = texts[index]
+
+            let commentParts = CommentPart.parse(comment.comment.content, []) // ERROR: Use EmojiRepository
+            let commentView = BomExportCommentItemView(parts: commentParts)
+
+            commentView.frame.origin.x = videoFrame.maxX
+            commentView.frame.origin.y = videoFrame.height - videoFrame.height * comment.place / composeHeight - commentView.bounds.height
+
+            let moveAnimation =  CABasicAnimation(keyPath: "position.x")
+            moveAnimation.byValue = -(videoFrame.width + commentView.bounds.width)
+            moveAnimation.beginTime = comment.time
+            moveAnimation.duration = commentView.duration(width: videoFrame.width)
+            moveAnimation.isRemovedOnCompletion = false
+            moveAnimation.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionLinear)
+            moveAnimation.fillMode = kCAFillModeForwards
+
+            commentView.layer.add(moveAnimation, forKey: "move")
+
+            // Add sub layer and store view
+            overlayLayer.addSublayer(commentView.layer)
+            overlayViews.append(commentView) // *Very importance: Must store instance, otherwise it can't render
+        }
+
+        let watermark = UILabel(frame: CGRect(x: videoFrame.width - 150, y: 0, width: 150, height: 56))
+        watermark.font = .Font(23)
+        watermark.textColor = .white
+        watermark.text = "VIBBIDI.com"
+        watermark.textAlignment = .center
+        watermark.backgroundColor = UIColor(white: 0, alpha: 0.25)
+        overlayLayer.addSublayer(watermark.layer)
+        overlayViews.append(watermark) // *Very importance: To store instance, otherwise it can't render
+
+        let parentLayer = CALayer()
+        parentLayer.frame = videoFrame
+
+        let videoLayer = CALayer()
+        videoLayer.frame = videoFrame
+
+        parentLayer.addSublayer(videoLayer)
+        parentLayer.addSublayer(overlayLayer)
+
+        outputComposition.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
+    }
 }
 
 private extension VideoMerge {
@@ -318,8 +318,6 @@ private extension VideoMerge {
         
         // Remove existing cache at url if has any
         try? FileManager.default.removeItem(at: cacheURL)
-        print("Remove previous cache file at path: \(cacheURL)")
-        
         return cacheURL
     }
     
@@ -337,7 +335,6 @@ private extension VideoMerge {
         let image = UIImage(cgImage: imageRef)
         return UIImageJPEGRepresentation(image, 0.95)
     }
-    
 }
 
 

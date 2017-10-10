@@ -25,7 +25,10 @@ class ViewController: UIViewController {
         let url = Bundle.main.url(forResource: "20s", withExtension: "mp4")!
         let brushImage: UIImage = #imageLiteral(resourceName: "water_mark")
         
-        videoMerge = VideoMerge(videoUrl: url, texts: [], brushImage: brushImage)
+        let comment1 = Comment(id: "", channelId: "", userId: "", content: "Hello world", avatarPath: "", importance: 0, sendTime: Date(), isFollowing: false)
+        let compose1 = ComposeComment(comment: comment1, time: 2, place: 80)
+        
+        videoMerge = VideoMerge(videoUrl: url, texts: [compose1], brushImage: brushImage)
         
         let begin = Date();
         videoMerge?.startExportVideo(onProgress: { [unowned self] (progress) in
