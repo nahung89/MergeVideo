@@ -148,7 +148,7 @@ class VideoMerge: NSObject {
         if let url = url {
             do {
                 let videoData = try Data(contentsOf: url)
-                let imageData = previewImageData(forVideoUrl: url)
+                let imageData = try createPreviewData(fromVideoUrl: url)
                 completionBlock?(videoData, imageData, nil)
             } catch let error {
                 completionBlock?(nil, nil, error)
@@ -217,7 +217,7 @@ class VideoMerge: NSObject {
         if let exportSession = AVAssetExportSession(asset: inputComposition, presetName: AVAssetExportPresetHighestQuality) {
             exportSession.videoComposition = outputComposition
             exportSession.outputFileType = AVFileType.mov
-            exportSession.outputURL =  NSURL.fileURL(withPath: createCacheURL())
+            exportSession.outputURL = createCacheURL()
             exportSession.shouldOptimizeForNetworkUse = true
             return exportSession
         }
@@ -350,49 +350,37 @@ class VideoMerge: NSObject {
 //        outputComposition.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
 //    }
     
-    private func createCacheURL() -> String {
-        // Create export path
-        let documentDirectory = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
-        let outputFileName = ProcessInfo.processInfo.globallyUniqueString as NSString
-        let cachePath = (documentDirectory as NSString).appendingPathComponent("mergeVideo-\(outputFileName).mov")
-        let outputURL = URL(fileURLWithPath: cachePath)
-        
-        // Remove existing file at url if has any
-        do {
-            try FileManager.default.removeItem(at: outputURL)
-            print("remove file at path \(outputURL) \n")
-        }
-        catch _ { }
-        
-        return cachePath
-    }
+    
     
 }
 
-extension VideoMerge {
-    fileprivate func previewImageData(forVideoUrl url: URL?) -> Data? {
-        guard let url = url else { return  nil }
+private extension VideoMerge {
+    
+    func createCacheURL() -> URL {
+        let documentDirFileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let outputFileName = ProcessInfo.processInfo.globallyUniqueString
+        let cacheURL = documentDirFileURL.appendingPathComponent("mergeVideo-\(outputFileName).mov")
         
+        // Remove existing file at url if has any
+        try? FileManager.default.removeItem(at: cacheURL)
+        print("Remove previous cache file at path: \(cacheURL)")
+        
+        return cacheURL
+    }
+    
+    func createPreviewData(fromVideoUrl url: URL) throws -> Data? {
         let asset = AVAsset(url: url)
         let imageGenerator = AVAssetImageGenerator(asset: asset)
         imageGenerator.appliesPreferredTrackTransform = true
         imageGenerator.requestedTimeToleranceAfter = kCMTimeZero
         imageGenerator.requestedTimeToleranceBefore = kCMTimeZero
         
-        // let composition = AVVideoComposition(propertiesOfAsset: asset)
-        // var time = composition.frameDuration
         var time = asset.duration
         time.value = min(asset.duration.value, 1)
         
-        do {
-            let imageRef = try imageGenerator.copyCGImage(at: time, actualTime: nil)
-            let image = UIImage(cgImage: imageRef)
-            return UIImageJPEGRepresentation(image, 0.9)
-        }
-        catch let error as NSError {
-            print("previewImage(forVideoUrl:) fail - \(error)")
-            return nil
-        }
+        let imageRef = try imageGenerator.copyCGImage(at: time, actualTime: nil)
+        let image = UIImage(cgImage: imageRef)
+        return UIImageJPEGRepresentation(image, 0.95)
     }
     
 }
