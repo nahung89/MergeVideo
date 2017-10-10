@@ -21,8 +21,8 @@ class ViewController: UIViewController {
     func createData() {
         
         // let videoNames: [String] = ["22s.mp4"]
-        // let videoNames: [String] = ["20s.mp4"]
-        let videoNames: [String] = ["video-1.mp4"]
+        let videoNames: [String] = ["20s.mp4"]
+        // let videoNames: [String] = ["video-1.mp4", "video-2.mp4", "video-3.mp4"]
         // let videoNames: [String] = ["video-1.mp4", "video-2.mp4", "video-3.mp4", "video-4.mp4", "video-5.mp4", "video-6.mp4"]
         
         var videoUrls: [URL] = []
@@ -34,7 +34,7 @@ class ViewController: UIViewController {
         }
         let brushImage: UIImage = #imageLiteral(resourceName: "water_mark")
         
-        let videoMerge: VideoMerge = VideoMerge(videoUrls: videoUrls, texts: videoNames, brushImage: brushImage)
+        let videoMerge: VideoMerge = VideoMerge(videoUrls: videoUrls, texts: ["😃 😄 😅 😆","😊 😎 😇 😈", "😉 😋 😏 😌"], brushImage: brushImage)
         
         let begin = Date();
         videoMerge.startExportVideo(onProgress: { [unowned self] (progress) in
@@ -44,10 +44,12 @@ class ViewController: UIViewController {
                 print("Input: \(videoNames)")
                 print("Total time: \(endTime)")
                 print("---------")
+                
                 print("video: \(String(describing: videoData?.description))")
                 print("thumb: \(String(describing: thumbData?.description))")
                 print("error: \(String(describing: error))")
                 if error == nil, let videoUrl = videoMerge.exportUrl {
+                    print("url: \(videoUrl)")
                     self.playVideo(url: videoUrl)
                 }
         })

@@ -34,7 +34,7 @@ class VideoMerge: NSObject {
     private var textLabels: [UILabel] = []
     
     
-    private let kVideoSize = CGSize(width: 400, height: 400)
+    private let kVideoSize = CGSize(width: 600, height: 300)
     private let kExportDomain: String = "ExportErrorDomain"
     private let kExportCode: Int = -1
     
@@ -225,11 +225,15 @@ class VideoMerge: NSObject {
         outputCompositionInstruction.timeRange = CMTimeRangeMake(kCMTimeZero, totalVideoTimeLength)
         outputCompositionInstruction.layerInstructions = outputVideoInstructions
         
+        var size = videoTracks.first!.naturalSize
+        let scale: CGFloat = kVideoSize.width / size.width
+        var newesetSize = CGSize(width: size.width * scale, height: size.height * scale)
+        
         // Output video composition
         let outputComposition = AVMutableVideoComposition()
         outputComposition.instructions = [outputCompositionInstruction]
         outputComposition.frameDuration = CMTimeMake(1, 30)
-        outputComposition.renderSize = kVideoSize
+        outputComposition.renderSize = newesetSize
         
         // Add effects
         addEffect(image: brushImage, texts: texts, withAssets: assets, toOutputComposition: outputComposition)
@@ -311,6 +315,8 @@ class VideoMerge: NSObject {
         var outputVideoInstructions: [AVMutableVideoCompositionLayerInstruction] = []
         var totalVideoTime = kCMTimeZero
         
+        let size = videoTracks.first!.naturalSize
+        
         // Add instruction for videos
         for i in 0..<assets.count {
             let asset = assets[i]
@@ -318,7 +324,14 @@ class VideoMerge: NSObject {
             totalVideoTime = CMTimeAdd(totalVideoTime, asset.duration)
             
             let instruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+            
             instruction.setTransform(videoTrack.preferredTransform, at: kCMTimeZero)
+            
+            let scale: CGFloat = kVideoSize.width / size.width
+            
+            let t3 = videoTrack.preferredTransform.scaledBy(x: scale, y: scale)
+            instruction.setTransform(t3, at: kCMTimeZero)
+            
             instruction.setOpacity(0.0, at: totalVideoTime)
             
             outputVideoInstructions.append(instruction)
@@ -350,11 +363,12 @@ class VideoMerge: NSObject {
             }
             
             // Creat megatext view layer & calculate font size
-            let textLabel = UILabel(frame: textFrame)
+            let textLabel = UILabel(frame: CGRect(x: 0, y: videoFrame.midY - 30, width: videoFrame.width, height: 60))
             textLabel.text = text
             textLabel.font = font
             textLabel.textColor = UIColor.white
             textLabel.textAlignment = .center
+            textLabel.backgroundColor = UIColor.yellow
             textLabel.layer.opacity = 0.0
             
             let animateAppear = CABasicAnimation(keyPath: "opacity")
@@ -377,8 +391,8 @@ class VideoMerge: NSObject {
             textLabel.layer.add(animateDisappear, forKey: "disappear")
             
             // Insert megatext layer
-            overlayLayer.addSublayer(textLabel.layer)
-            textLabels.append(textLabel)
+             overlayLayer.addSublayer(textLabel.layer)
+             textLabels.append(textLabel)
             
             atTime += assetDuration
         }
