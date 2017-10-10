@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1140FC791F8CD5C3005F3541 /* Data.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1140FC781F8CD5C3005F3541 /* Data.swift */; };
+		1140FC7B1F8CD81D005F3541 /* BomExportCommentItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1140FC7A1F8CD81D005F3541 /* BomExportCommentItemView.swift */; };
 		11CC633A1F83C4A400936CDF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CC63391F83C4A400936CDF /* AppDelegate.swift */; };
 		11CC633C1F83C4A400936CDF /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CC633B1F83C4A400936CDF /* ViewController.swift */; };
 		11CC633F1F83C4A400936CDF /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 11CC633D1F83C4A400936CDF /* Main.storyboard */; };
@@ -24,6 +26,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1140FC781F8CD5C3005F3541 /* Data.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data.swift; sourceTree = "<group>"; };
+		1140FC7A1F8CD81D005F3541 /* BomExportCommentItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BomExportCommentItemView.swift; sourceTree = "<group>"; };
 		11CC63361F83C4A400936CDF /* MergeVideo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MergeVideo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		11CC63391F83C4A400936CDF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		11CC633B1F83C4A400936CDF /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -53,6 +57,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1140FC771F8CD5AC005F3541 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				1140FC781F8CD5C3005F3541 /* Data.swift */,
+				1140FC7A1F8CD81D005F3541 /* BomExportCommentItemView.swift */,
+			);
+			name = Data;
+			sourceTree = "<group>";
+		};
 		11CC632D1F83C4A400936CDF = {
 			isa = PBXGroup;
 			children = (
@@ -72,6 +85,7 @@
 		11CC63381F83C4A400936CDF /* MergeVideo */ = {
 			isa = PBXGroup;
 			children = (
+				1140FC771F8CD5AC005F3541 /* Data */,
 				11CC634D1F83C79E00936CDF /* Samples */,
 				11CC63391F83C4A400936CDF /* AppDelegate.swift */,
 				11CC633B1F83C4A400936CDF /* ViewController.swift */,
@@ -180,8 +194,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1140FC791F8CD5C3005F3541 /* Data.swift in Sources */,
 				11CC633C1F83C4A400936CDF /* ViewController.swift in Sources */,
 				11CC634C1F83C4B500936CDF /* VideoMerge.swift in Sources */,
+				1140FC7B1F8CD81D005F3541 /* BomExportCommentItemView.swift in Sources */,
 				11CC633A1F83C4A400936CDF /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -19,8 +19,8 @@ class VideoMerge: NSObject {
         case none, merge, finish
     }
     
-    private var videoUrls: [URL] = []
-    private var texts: [String] = []
+    private var videoUrl: URL
+    private var texts: [ComposeComment] = []
     private var brushImage: UIImage?
     
     private var exportSession: AVAssetExportSession?
@@ -30,26 +30,28 @@ class VideoMerge: NSObject {
     
     private var state: State = .none
     
+    private var textLabels: [UIView] = []
     
-    private var textLabels: [UILabel] = []
+    
+    private let displayWidth: CGFloat = UIScreen.main.bounds.width
     
     
-    private let kVideoSize = CGSize(width: 600, height: 300)
+    private let kExportWidth: CGFloat = 667
     private let kExportDomain: String = "ExportErrorDomain"
     private let kExportCode: Int = -1
     
     // MARK: - Initialize
     
-    init(videoUrls: [URL], texts: [String], brushImage: UIImage?) {
-        self.videoUrls = videoUrls
+    init(videoUrl: URL, texts: [ComposeComment], brushImage: UIImage?) {
+        self.videoUrl = videoUrl
         self.texts = texts
         self.brushImage = brushImage
         super.init()
-        processExportVideo()
+        // processExportVideo()
     }
     
     deinit {
-        print("VideoMerge deinit")
+        print("\(self) dealloc") // ERROR: Test!
     }
     
     // MARK: - Actions
@@ -98,46 +100,37 @@ class VideoMerge: NSObject {
         
         
         DispatchQueue.global().async {
-            print("Start: \(Date())")
             export.exportAsynchronously() {
                 DispatchQueue.main.async { [weak self] () -> Void in
                     guard let this = self else { return }
                     switch export.status {
                     case .completed:
-                        print("Complete: \(Date())")
+                        print("Complete")
                         this.exportUrl = export.outputURL
                         this.exportSession = nil
                         this.state = .finish
                         this.finishExport(export.outputURL, error: nil)
                         
                     case .unknown:
-                        print("Unknown: \(Date())")
+                        print("Unknown")
                         if FileManager.default.fileExists(atPath: export.outputURL!.path) {
                             this.exportUrl = export.outputURL
                             this.exportSession = nil
                             this.state = .finish
                             this.finishExport(export.outputURL, error: nil)
-                        }
-                        else {
+                        } else {
                             this.exportSession = nil
                             this.state = .finish
                             this.finishExport(nil, error: export.error)
                         }
-                        break
                         
-                    case .exporting:
-                        break;
+                    case .exporting, .waiting: break
                         
                     case .failed, .cancelled:
-                        print("fail / cancel: \(String(describing: export.error))")
+                        print("Fail / Cancel: \(export.error)")
                         this.exportSession = nil
                         this.state = .finish
                         this.finishExport(nil, error: export.error)
-                        break
-                        
-                    default:
-                        print("unknown state")
-                        break
                     }
                 }
             }
@@ -169,27 +162,12 @@ class VideoMerge: NSObject {
     // MARK: - Ultilities
     
     private func createExportSession(_ error: inout Error?) -> AVAssetExportSession? {
-        guard videoUrls.count > 0 else {
-            let message = "Doesn't have any video to export."
-            print(message)
-            let userInfo: [String : Any] = [NSLocalizedDescriptionKey : message]
-            error = NSError(domain: kExportDomain, code: kExportCode, userInfo: userInfo) as Error
-            return nil
-        }
         
         // Get asset from videos
-        var assets: [AVAsset] = []
+        let asset: AVAsset = AVAsset(url: videoUrl)
         
-        for videoUrl in videoUrls {
-            let asset = AVAsset(url: videoUrl)
-            guard CMTimeGetSeconds(asset.duration) > 0 else {
-                continue
-            }
-            assets.append(asset)
-        }
-        
-        guard videoUrls.count == assets.count else {
-            let message = "Number of video is different with number of assets: (\(videoUrls.count) & \(assets.count))"
+        guard CMTimeGetSeconds(asset.duration) > 0 else {
+            let message = "error-2"
             let userInfo: [String : Any] = [NSLocalizedDescriptionKey : message]
             error = NSError(domain: kExportDomain, code: kExportCode, userInfo: userInfo) as Error
             return nil
@@ -197,46 +175,43 @@ class VideoMerge: NSObject {
         
         // Create input AVMutableComposition, hold our video AVMutableCompositionTrack list.
         let inputComposition = AVMutableComposition()
-        // Add list videos into input composition
-        let videoTracks = addVideo(toInputComposition: inputComposition, fromAssets: assets)
-        // Add list audio into input composition
-        _ = addAudio(toInputComposition: inputComposition, fromAssets: assets)
         
-        // Check data before creating output instructions
-        guard videoTracks.count == assets.count else {
-            let message = "Number of video tracks is more than 1 or empty!"
-            print(message)
-            let userInfo: [String : Any] = [NSLocalizedDescriptionKey: message]
+        // Add list videos into input composition
+        guard let videoTrack = addVideo(toInputComposition: inputComposition, fromAsset: asset) else {
+            let message = "error-3"
+            let userInfo: [String : Any] = [NSLocalizedDescriptionKey : message]
             error = NSError(domain: kExportDomain, code: kExportCode, userInfo: userInfo) as Error
             return nil
         }
         
+        
+        // Add list audio into input composition
+        _ = addAudio(toInputComposition: inputComposition, fromAsset: asset)
+        
         // Add video instructions
-        let outputVideoInstructions = createOutputVideoInstruction(fromAssets: assets, videoTracks: videoTracks)
+        let outputVideoInstruction = createOutputVideoInstruction(fromAsset: asset, videoTrack: videoTrack)
         
         // Get all video time length
         var totalVideoTimeLength = kCMTimeZero
-        for asset in assets {
-            totalVideoTimeLength = CMTimeAdd(totalVideoTimeLength, asset.duration)
-        }
+        totalVideoTimeLength = CMTimeAdd(totalVideoTimeLength, asset.duration)
         
         // Output composition instruction
         let outputCompositionInstruction = AVMutableVideoCompositionInstruction()
         outputCompositionInstruction.timeRange = CMTimeRangeMake(kCMTimeZero, totalVideoTimeLength)
-        outputCompositionInstruction.layerInstructions = outputVideoInstructions
+        outputCompositionInstruction.layerInstructions = [outputVideoInstruction]
         
-        var size = videoTracks.first!.naturalSize
-        let scale: CGFloat = kVideoSize.width / size.width
-        var newesetSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let videoSize = videoTrack.naturalSize
+        let scale: CGFloat = kExportWidth / videoSize.width
+        let exportSize = CGSize(width: videoSize.width * scale, height: videoSize.height * scale)
         
         // Output video composition
         let outputComposition = AVMutableVideoComposition()
         outputComposition.instructions = [outputCompositionInstruction]
         outputComposition.frameDuration = CMTimeMake(1, 30)
-        outputComposition.renderSize = newesetSize
+        outputComposition.renderSize = exportSize
         
         // Add effects
-        addEffect(image: brushImage, texts: texts, withAssets: assets, toOutputComposition: outputComposition)
+        // addEffect(image: brushImage, texts: texts, toOutputComposition: outputComposition)
         
         // Create export session from input video & output instruction
         if let exportSession = AVAssetExportSession(asset: inputComposition, presetName: AVAssetExportPresetHighestQuality) {
@@ -255,181 +230,125 @@ class VideoMerge: NSObject {
         }
     }
     
-    private func addVideo(toInputComposition inputComposition: AVMutableComposition, fromAssets assets: [AVAsset]) -> [AVMutableCompositionTrack] {
-        var videoTracks: [AVMutableCompositionTrack] = []
-        var atTime = kCMTimeZero
+    private func addVideo(toInputComposition inputComposition: AVMutableComposition, fromAsset asset: AVAsset) -> AVMutableCompositionTrack? {
         
-        // Add video tracks
-        for asset in assets {
-            guard let track = inputComposition.addMutableTrack(withMediaType: AVMediaType.video, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else { continue }
-            do {
-                // Important: only add track if has media type, or have to remove out of composition
-                // Otherwise export session always fail with error code -11820
-                if let videoTrack = asset.tracks(withMediaType: AVMediaType.video).first {
-                    try track.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: videoTrack, at: atTime)
-                    videoTracks.append(track)
-                }
-                else {
-                    inputComposition.removeTrack(track)
-                }
-                // Additive time for next asset
-                atTime = CMTimeAdd(atTime, asset.duration)
+        guard let track = inputComposition.addMutableTrack(withMediaType: AVMediaType.video, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else { return nil }
+        
+        do {
+            // Important: only add track if has media type, or have to remove out of composition
+            // Otherwise export session always fail with error code -11820
+            if let videoTrack = asset.tracks(withMediaType: AVMediaType.video).first {
+                try track.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: videoTrack, at: kCMTimeZero)
+                return track
             }
-            catch let error as NSError {
-                print("addVideoToInputComposition - Fail: \(error)")
+            else {
+                return nil
             }
         }
-        
-        return videoTracks
+        catch let error as NSError {
+            print("Fail: \(error)")
+            return nil
+        }
     }
     
-    private func addAudio(toInputComposition inputComposition: AVMutableComposition, fromAssets assets: [AVAsset]) -> [AVMutableCompositionTrack] {
-        var audioTracks: [AVMutableCompositionTrack] = []
-        var atTime = kCMTimeZero;
+    private func addAudio(toInputComposition inputComposition: AVMutableComposition, fromAsset asset: AVAsset) -> AVMutableCompositionTrack? {
         
         // Add Audio tracks
-        for asset in assets {
-            guard let track = inputComposition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else { continue }
-            do {
-                // Important: only add track if has media type, or have to remove out of composition
-                // Otherwise export session always fail with error code -11820
-                if let audioTrack = asset.tracks(withMediaType: AVMediaType.audio).first {
-                    try track.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: audioTrack, at: atTime)
-                    audioTracks.append(track)
-                }
-                else {
-                    inputComposition.removeTrack(track)
-                }
-                // Additive time for next asset
-                atTime = CMTimeAdd(atTime, asset.duration)
-            }
-            catch let error as NSError {
-                print("addAudioToInputComposition - Fail: \(error)")
-            }
+        guard let track = inputComposition.addMutableTrack(withMediaType: AVMediaType.audio, preferredTrackID: Int32(kCMPersistentTrackID_Invalid)) else {
+            return nil
         }
         
-        return audioTracks
+        do {
+            // Important: only add track if has media type, or have to remove out of composition
+            // Otherwise export session always fail with error code -11820
+            if let audioTrack = asset.tracks(withMediaType: AVMediaType.audio).first {
+                try track.insertTimeRange(CMTimeRangeMake(kCMTimeZero, asset.duration), of: audioTrack, at: kCMTimeZero)
+                return track
+            }
+            else {
+                return nil
+            }
+        }
+        catch let error as NSError {
+            print("Fail: \(error)")
+            return nil
+        }
     }
     
-    private func createOutputVideoInstruction(fromAssets assets: [AVAsset], videoTracks:[AVCompositionTrack]) -> [AVMutableVideoCompositionLayerInstruction] {
-        var outputVideoInstructions: [AVMutableVideoCompositionLayerInstruction] = []
+    private func createOutputVideoInstruction(fromAsset asset: AVAsset, videoTrack: AVCompositionTrack) -> AVMutableVideoCompositionLayerInstruction {
         var totalVideoTime = kCMTimeZero
         
-        let size = videoTracks.first!.naturalSize
+        let videoSize = videoTrack.naturalSize
         
         // Add instruction for videos
-        for i in 0..<assets.count {
-            let asset = assets[i]
-            let videoTrack = videoTracks[i]
-            totalVideoTime = CMTimeAdd(totalVideoTime, asset.duration)
-            
-            let instruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
-            
-            instruction.setTransform(videoTrack.preferredTransform, at: kCMTimeZero)
-            
-            let scale: CGFloat = kVideoSize.width / size.width
-            
-            let t3 = videoTrack.preferredTransform.scaledBy(x: scale, y: scale)
-            instruction.setTransform(t3, at: kCMTimeZero)
-            
-            instruction.setOpacity(0.0, at: totalVideoTime)
-            
-            outputVideoInstructions.append(instruction)
-        }
-        return outputVideoInstructions
+        totalVideoTime = CMTimeAdd(totalVideoTime, asset.duration)
+        
+        let instruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTrack)
+        
+        instruction.setTransform(videoTrack.preferredTransform, at: kCMTimeZero)
+        
+        let scale: CGFloat = kExportWidth / videoSize.width
+        
+        let t3 = videoTrack.preferredTransform.scaledBy(x: scale, y: scale)
+        instruction.setTransform(t3, at: kCMTimeZero)
+        
+        instruction.setOpacity(0.0, at: totalVideoTime)
+        
+        return instruction
     }
     
-    private func addEffect(image: UIImage?, texts: [String], withAssets assets: [AVAsset], toOutputComposition outputComposition: AVMutableVideoComposition) {
-        guard texts.count == assets.count  else { return }
-        
-        // Text layer container
-        let videoFrame = CGRect(origin: CGPoint.zero, size: outputComposition.renderSize)
-        let overlayLayer = CALayer()
-        overlayLayer.frame = videoFrame
-        overlayLayer.masksToBounds = true
-        
-        let textFrame = videoFrame
-        let font = UIFont.systemFont(ofSize: 40)
-        var atTime: TimeInterval = 0.0
-        
-        for index in stride(from: 0, to: texts.count, by: 1) {
-            let text = texts[index]
-            let asset = assets[index]
-            let assetDuration = CMTimeGetSeconds(asset.duration)
-            
-            guard !text.isEmpty else {
-                atTime += assetDuration
-                continue
-            }
-            
-            // Creat megatext view layer & calculate font size
-            let textLabel = UILabel(frame: CGRect(x: 0, y: videoFrame.midY - 30, width: videoFrame.width, height: 60))
-            textLabel.text = text
-            textLabel.font = font
-            textLabel.textColor = UIColor.white
-            textLabel.textAlignment = .center
-            textLabel.backgroundColor = UIColor.yellow
-            textLabel.layer.opacity = 0.0
-            
-            let animateAppear = CABasicAnimation(keyPath: "opacity")
-            animateAppear.fromValue = 0.0
-            animateAppear.toValue = 1.0
-            animateAppear.beginTime = atTime + 0.01
-            animateAppear.duration = 0.0
-            animateAppear.isRemovedOnCompletion = false
-            animateAppear.fillMode = kCAFillModeForwards
-            
-            let animateDisappear = CABasicAnimation(keyPath: "opacity")
-            animateDisappear.fromValue = 1.0
-            animateDisappear.toValue = 0.0
-            animateDisappear.beginTime = atTime + assetDuration
-            animateDisappear.duration = 0.0
-            animateDisappear.isRemovedOnCompletion = false
-            animateDisappear.fillMode = kCAFillModeForwards
-            
-            textLabel.layer.add(animateAppear, forKey: "appear")
-            textLabel.layer.add(animateDisappear, forKey: "disappear")
-            
-            // Insert megatext layer
-             overlayLayer.addSublayer(textLabel.layer)
-             textLabels.append(textLabel)
-            
-            atTime += assetDuration
-        }
-        
-        let parentLayer = CALayer()
-        parentLayer.frame = videoFrame
-        
-        let videoLayer = CALayer()
-        videoLayer.frame = videoFrame
-        
-        let imageView = UIImageView(frame: CGRect(x: 10, y: 10, width: 60, height: 20))
-        imageView.contentMode = .scaleAspectFit
-        imageView.backgroundColor = UIColor.yellow
-        imageView.image = image
-        
-        parentLayer.addSublayer(videoLayer)
-        parentLayer.addSublayer(imageView.layer)
-        parentLayer.addSublayer(overlayLayer)
-        
-        
-        //        // Add credit layer
-        //        if _creditView != nil && _creditView?.text != nil {
-        //            let animateAppear = CABasicAnimation(keyPath: "opacity")
-        //            animateAppear.fromValue = 0.0
-        //            animateAppear.toValue = 1.0
-        //            animateAppear.beginTime = atTime - 2.0
-        //            animateAppear.duration = 0.0
-        //            animateAppear.removedOnCompletion = false
-        //            animateAppear.fillMode = kCAFillModeForwards
-        //
-        //            _creditView?.layer.opacity = 0.0
-        //            _creditView?.layer.addAnimation(animateAppear, forKey: "appear")
-        //            parentLayer.addSublayer(_creditView!.layer)
-        //        }
-        
-        outputComposition.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
-    }
+//    private func addEffect(image: UIImage?, texts: [ComposeComment], toOutputComposition outputComposition: AVMutableVideoComposition) {
+//
+//        // Text layer container
+//        let videoFrame = CGRect(origin: CGPoint.zero, size: outputComposition.renderSize)
+//        let overlayLayer = CALayer()
+//        overlayLayer.frame = videoFrame
+//        overlayLayer.masksToBounds = true
+//
+//        let usedHeight = videoFrame.height * displayWidth / videoFrame.width
+//
+//        for index in stride(from: 0, to: texts.count, by: 1) {
+//            let comment: ComposeComment = texts[index]
+//
+//            let commentParts = CommentPart.parse(comment.comment.content, [])
+//            let textLabel = BomExportCommentItemView(parts: commentParts)
+//
+//            textLabel.frame.origin.x = videoFrame.maxX
+//            textLabel.frame.origin.y = videoFrame.bounds.height - videoFrame.bounds.height * comment.place / usedHeight - textLabel.bounds.height
+//
+//            let moveAnimation =  CABasicAnimation(keyPath: "position.x")
+//            moveAnimation.byValue = -(videoFrame.bounds.width + textLabel.bounds.width)
+//            moveAnimation.beginTime = comment.time
+//            moveAnimation.duration = textLabel.duration(width: videoFrame.bounds.width)
+//            moveAnimation.isRemovedOnCompletion = false
+//            moveAnimation.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionLinear)
+//            moveAnimation.fillMode = kCAFillModeForwards
+//
+//            textLabel.layer.add(moveAnimation, forKey: "move")
+//
+//            // Insert megatext layer
+//            overlayLayer.addSublayer(textLabel.layer)
+//            textLabels.append(textLabel) // *Very importance: To store instance, otherwise it can't render
+//        }
+//
+//        let watermark = UILabel(frame: CGRect(x: videoFrame.bounds.width - 150, y: 0, width: 150, height: 56))
+//        watermark.set(font: .Font(23), color: .white, text: "VIBBIDI.com")
+//        watermark.textAlignment = .center
+//        watermark.backgroundColor = UIColor(hex: 0x000000, alpha: 0.25)
+//        overlayLayer.addSublayer(watermark.layer)
+//        textLabels.append(watermark) // *Very importance: To store instance, otherwise it can't render
+//
+//        let parentLayer = CALayer()
+//        parentLayer.frame = videoFrame
+//
+//        let videoLayer = CALayer()
+//        videoLayer.frame = videoFrame
+//
+//        parentLayer.addSublayer(videoLayer)
+//        parentLayer.addSublayer(overlayLayer)
+//
+//        outputComposition.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
+//    }
     
     private func createCacheURL() -> String {
         // Create export path
@@ -477,3 +396,6 @@ extension VideoMerge {
     }
     
 }
+
+
+
