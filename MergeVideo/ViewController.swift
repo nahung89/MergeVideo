@@ -11,6 +11,8 @@ import AVKit
 
 class ViewController: UIViewController {
 
+    var videoMerge: VideoMerge?
+    
     @IBOutlet weak var labelProgress: UILabel!
     
     override func viewDidLoad() {
@@ -23,10 +25,10 @@ class ViewController: UIViewController {
         let url = Bundle.main.url(forResource: "20s", withExtension: "mp4")!
         let brushImage: UIImage = #imageLiteral(resourceName: "water_mark")
         
-        let videoMerge: VideoMerge = VideoMerge(videoUrl: url, texts: [], brushImage: brushImage)
+        videoMerge = VideoMerge(videoUrl: url, texts: [], brushImage: brushImage)
         
         let begin = Date();
-        videoMerge.startExportVideo(onProgress: { [unowned self] (progress) in
+        videoMerge?.startExportVideo(onProgress: { [unowned self] (progress) in
             self.labelProgress.text = "\(progress)"
             }, onCompletion: { [unowned self] (videoData, thumbData, error) in
                 let endTime = Date().timeIntervalSince(begin)
@@ -41,7 +43,7 @@ class ViewController: UIViewController {
                 print("error: \(String(describing: error))")
                 print("---------")
                 
-                if error == nil, let videoUrl = videoMerge.exportUrl {
+                if error == nil, let videoUrl = self.videoMerge?.exportedUrl {
                     print("url: \(videoUrl)")
                     print("---------")
                     self.playVideo(url: videoUrl)

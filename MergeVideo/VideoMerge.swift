@@ -87,37 +87,37 @@ extension VideoMerge {
     }
     
     private func handleExportSession(_ export: AVAssetExportSession) {
-        DispatchQueue.global().async { [weak self] in
-            export.exportAsynchronously() {
+        DispatchQueue.global().async { [weak self, weak export] in
+            export?.exportAsynchronously() {
                 DispatchQueue.main.async {
-                    guard let this = self else { return }
+                    guard let `self` = self, let export = export else { return }
                     switch export.status {
                     case .completed, .unknown:
                         
                         if let url = export.outputURL, FileManager.default.fileExists(atPath: url.path) {
-                            this.exportedUrl = url
-                            this.state = .finished(url)
-                            this.finishExport(url, error: nil)
+                            self.exportedUrl = url
+                            self.state = .finished(url)
+                            self.finishExport(url, error: nil)
                         } else {
-                            this.state = .failed(export.error)
-                            this.finishExport(nil, error: export.error)
+                            self.state = .failed(export.error)
+                            self.finishExport(nil, error: export.error)
                         }
-                        this.exportSession = nil
+                        self.exportSession = nil
                         
                     case .failed, .cancelled:
-                        this.exportSession = nil
-                        this.state = .failed(export.error)
-                        this.finishExport(nil, error: export.error)
+                        self.exportSession = nil
+                        self.state = .failed(export.error)
+                        self.finishExport(nil, error: export.error)
                         
                     case .exporting, .waiting: break
                     }
                 }
             }
             
-            while export.status == .waiting || export.status == .exporting {
+            while export?.status == .waiting || export?.status == .exporting {
                 DispatchQueue.main.async {
-                    guard let this = self else { return }
-                    this.progressBlock?(export.progress)
+                    guard let `self` = self, let export = export else { return }
+                    self.progressBlock?(export.progress)
                 }
             }
         }
