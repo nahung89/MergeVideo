@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1140FC791F8CD5C3005F3541 /* Data.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1140FC781F8CD5C3005F3541 /* Data.swift */; };
 		1140FC7B1F8CD81D005F3541 /* BomExportCommentItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1140FC7A1F8CD81D005F3541 /* BomExportCommentItemView.swift */; };
+		11A29AB521D071F800778E99 /* mergeVideo-CC55490C-7414-4CDE-9A0C-459ADEE2278B-1905-0000020B938554F9.mov in Resources */ = {isa = PBXBuildFile; fileRef = 11A29AB421D071F800778E99 /* mergeVideo-CC55490C-7414-4CDE-9A0C-459ADEE2278B-1905-0000020B938554F9.mov */; };
 		11CC633A1F83C4A400936CDF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CC63391F83C4A400936CDF /* AppDelegate.swift */; };
 		11CC633C1F83C4A400936CDF /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CC633B1F83C4A400936CDF /* ViewController.swift */; };
 		11CC633F1F83C4A400936CDF /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 11CC633D1F83C4A400936CDF /* Main.storyboard */; };
@@ -28,6 +29,7 @@
 /* Begin PBXFileReference section */
 		1140FC781F8CD5C3005F3541 /* Data.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data.swift; sourceTree = "<group>"; };
 		1140FC7A1F8CD81D005F3541 /* BomExportCommentItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BomExportCommentItemView.swift; sourceTree = "<group>"; };
+		11A29AB421D071F800778E99 /* mergeVideo-CC55490C-7414-4CDE-9A0C-459ADEE2278B-1905-0000020B938554F9.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = "mergeVideo-CC55490C-7414-4CDE-9A0C-459ADEE2278B-1905-0000020B938554F9.mov"; sourceTree = "<group>"; };
 		11CC63361F83C4A400936CDF /* MergeVideo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MergeVideo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		11CC63391F83C4A400936CDF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		11CC633B1F83C4A400936CDF /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -66,6 +68,14 @@
 			name = Data;
 			sourceTree = "<group>";
 		};
+		11A29AB321D071E100778E99 /* Output */ = {
+			isa = PBXGroup;
+			children = (
+				11A29AB421D071F800778E99 /* mergeVideo-CC55490C-7414-4CDE-9A0C-459ADEE2278B-1905-0000020B938554F9.mov */,
+			);
+			name = Output;
+			sourceTree = "<group>";
+		};
 		11CC632D1F83C4A400936CDF = {
 			isa = PBXGroup;
 			children = (
@@ -101,6 +111,7 @@
 		11CC634D1F83C79E00936CDF /* Samples */ = {
 			isa = PBXGroup;
 			children = (
+				11A29AB321D071E100778E99 /* Output */,
 				11CC63551F83C99A00936CDF /* 20s.mp4 */,
 				11CC634F1F83C7B500936CDF /* 22s.mp4 */,
 				11CC63521F83C7B500936CDF /* video-1.mp4 */,
@@ -183,6 +194,7 @@
 				11CC635D1F83CCAE00936CDF /* video-6.mp4 in Resources */,
 				11CC63561F83CCAE00936CDF /* 20s.mp4 in Resources */,
 				11CC63581F83CCAE00936CDF /* video-1.mp4 in Resources */,
+				11A29AB521D071F800778E99 /* mergeVideo-CC55490C-7414-4CDE-9A0C-459ADEE2278B-1905-0000020B938554F9.mov in Resources */,
 				11CC635B1F83CCAE00936CDF /* video-4.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
